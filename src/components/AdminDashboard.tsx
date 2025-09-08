@@ -15,33 +15,47 @@ import {
   Wallet
 } from 'lucide-react';
 import { FinanceChart } from './FinanceChart';
+import { useEffect, useState } from 'react';
+import { getSocietyStats, getMembers, getBills, getExpenses, type Member, type Bill, type Expense } from '@/lib/mockData';
 
 export const AdminDashboard = () => {
-  const societyData = {
-    totalMembers: 124,
-    occupiedFlats: 98,
-    pendingApprovals: 3,
-    totalCollection: 245000,
-    totalExpenses: 189000,
-    netBalance: 56000,
-    monthlyTarget: 310000,
-    collectionRate: 79,
-    recentPayments: [
-      { id: 1, member: "Rajesh Kumar", flat: "A-201", amount: 2500, date: "2024-01-12", status: "paid" },
-      { id: 2, member: "Priya Sharma", flat: "B-105", amount: 2500, date: "2024-01-12", status: "paid" },
-      { id: 3, member: "Amit Singh", flat: "C-303", amount: 2500, date: "2024-01-11", status: "paid" },
-      { id: 4, member: "Sunita Devi", flat: "A-102", amount: 2500, date: "2024-01-11", status: "paid" },
-    ],
-    overdueMembers: [
-      { id: 1, member: "Rohit Gupta", flat: "B-207", amount: 7500, months: 3, lastPaid: "2023-10-15" },
-      { id: 2, member: "Neha Jain", flat: "C-401", amount: 5000, months: 2, lastPaid: "2023-11-12" },
-    ],
-    recentExpenses: [
-      { id: 1, category: "Electricity", amount: 15000, date: "2024-01-10", vendor: "State Electricity Board" },
-      { id: 2, category: "Security", amount: 25000, date: "2024-01-08", vendor: "Guardian Security Services" },
-      { id: 3, category: "Maintenance", amount: 8500, date: "2024-01-05", vendor: "Quick Fix Solutions" },
-    ]
-  };
+  const [stats, setStats] = useState(getSocietyStats());
+  const [recentPayments, setRecentPayments] = useState<Bill[]>([]);
+  const [overdueMembers, setOverdueMembers] = useState<{member: Member, bills: Bill[]}[]>([]);
+  const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
+
+  useEffect(() => {
+    // Load real data
+    const members = getMembers();
+    const bills = getBills();
+    const expenses = getExpenses();
+
+    // Get recent payments (last 10 paid bills)
+    const recentPaidBills = bills
+      .filter(b => b.status === 'paid' && b.paidDate)
+      .sort((a, b) => new Date(b.paidDate!).getTime() - new Date(a.paidDate!).getTime())
+      .slice(0, 4);
+    setRecentPayments(recentPaidBills);
+
+    // Get overdue members
+    const overdue = members
+      .map(member => ({
+        member,
+        bills: bills.filter(b => b.memberId === member.id && b.status === 'overdue')
+      }))
+      .filter(item => item.bills.length > 0)
+      .slice(0, 2);
+    setOverdueMembers(overdue);
+
+    // Get recent expenses (last 3)
+    const recent = expenses
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 3);
+    setRecentExpenses(recent);
+
+    // Update stats
+    setStats(getSocietyStats());
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -74,8 +88,8 @@ export const AdminDashboard = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Members</p>
-              <p className="text-2xl font-bold">{societyData.totalMembers}</p>
-              <p className="text-xs text-success">+2 this month</p>
+              <p className="text-2xl font-bold">{stats.totalMembers}</p>
+              <p className="text-xs text-success">Active: {stats.activeMembers}</p>
             </div>
           </div>
         </Card>
@@ -87,8 +101,8 @@ export const AdminDashboard = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Monthly Collection</p>
-              <p className="text-2xl font-bold">₹{(societyData.totalCollection / 1000).toFixed(0)}K</p>
-              <p className="text-xs text-success">{societyData.collectionRate}% collected</p>
+              <p className="text-2xl font-bold">₹{(stats.totalCollection / 1000).toFixed(0)}K</p>
+              <p className="text-xs text-success">{stats.collectionRate}% collected</p>
             </div>
           </div>
         </Card>
@@ -100,7 +114,7 @@ export const AdminDashboard = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Expenses</p>
-              <p className="text-2xl font-bold">₹{(societyData.totalExpenses / 1000).toFixed(0)}K</p>
+              <p className="text-2xl font-bold">₹{(stats.totalExpenses / 1000).toFixed(0)}K</p>
               <p className="text-xs text-muted-foreground">This month</p>
             </div>
           </div>
@@ -113,8 +127,8 @@ export const AdminDashboard = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Net Balance</p>
-              <p className="text-2xl font-bold text-success">₹{(societyData.netBalance / 1000).toFixed(0)}K</p>
-              <p className="text-xs text-success">+12% from last month</p>
+              <p className="text-2xl font-bold text-success">₹{(stats.netBalance / 1000).toFixed(0)}K</p>
+              <p className="text-xs text-success">Current balance</p>
             </div>
           </div>
         </Card>
@@ -135,23 +149,23 @@ export const AdminDashboard = () => {
           <div className="p-6 border-b border-border">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold">Overdue Payments</h2>
-              <Badge variant="destructive">{societyData.overdueMembers.length} Members</Badge>
+              <Badge variant="destructive">{overdueMembers.length} Members</Badge>
             </div>
           </div>
           <div className="p-6 space-y-4">
-            {societyData.overdueMembers.map((member) => (
-              <div key={member.id} className="flex items-center justify-between p-4 rounded-xl bg-danger/5 border border-danger/20">
+            {overdueMembers.map((item, index) => (
+              <div key={item.member.id} className="flex items-center justify-between p-4 rounded-xl bg-danger/5 border border-danger/20">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-danger rounded-xl flex items-center justify-center">
                     <AlertTriangle className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold">{member.member}</h3>
-                    <p className="text-sm text-muted-foreground">Flat {member.flat} • {member.months} months overdue</p>
+                    <h3 className="font-semibold">{item.member.name}</h3>
+                    <p className="text-sm text-muted-foreground">Flat {item.member.flatNumber} • {item.bills.length} bills overdue</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-danger">₹{member.amount.toLocaleString()}</p>
+                  <p className="font-bold text-danger">₹{item.bills.reduce((sum, bill) => sum + bill.amount, 0).toLocaleString()}</p>
                   <Button size="sm" variant="outline" className="mt-1">
                     Send Notice
                   </Button>
@@ -174,22 +188,25 @@ export const AdminDashboard = () => {
             </div>
           </div>
           <div className="p-6 space-y-4">
-            {societyData.recentPayments.map((payment) => (
-              <div key={payment.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-smooth">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gradient-success rounded-lg flex items-center justify-center">
-                    <CheckCircle className="w-4 h-4 text-white" />
+            {recentPayments.map((payment) => {
+              const member = getMembers().find(m => m.id === payment.memberId);
+              return (
+                <div key={payment.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-smooth">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-success rounded-lg flex items-center justify-center">
+                      <CheckCircle className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm">{member?.name}</h3>
+                      <p className="text-xs text-muted-foreground">Flat {member?.flatNumber} • {payment.paidDate}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-sm">{payment.member}</h3>
-                    <p className="text-xs text-muted-foreground">Flat {payment.flat} • {payment.date}</p>
+                  <div className="text-right">
+                    <p className="font-bold text-success">₹{payment.amount.toLocaleString()}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-success">₹{payment.amount.toLocaleString()}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
 
@@ -203,7 +220,7 @@ export const AdminDashboard = () => {
             </div>
           </div>
           <div className="p-6 space-y-4">
-            {societyData.recentExpenses.map((expense) => (
+            {recentExpenses.map((expense) => (
               <div key={expense.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-smooth">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-gradient-warning rounded-lg flex items-center justify-center">
