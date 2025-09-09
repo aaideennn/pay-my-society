@@ -92,51 +92,79 @@ export const Navigation = ({ currentView, onViewChange, userType, memberName }: 
 
       {/* Mobile Menu Overlay */}
       {isOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setIsOpen(false)}>
-          <div className="fixed inset-y-0 left-0 w-80 bg-white p-6 shadow-xl">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
-                <Home className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-xl">Society Manager</h2>
-                <p className="text-sm text-muted-foreground">{userType === 'admin' ? 'Admin Panel' : 'Member Portal'}</p>
-              </div>
-            </div>
-
-            {/* User Info */}
-            <Card className="p-4 mb-6 bg-gradient-hero text-white border-0">
+        <div className="lg:hidden fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm">
+          {/* Backdrop - closes menu when clicked */}
+          <div 
+            className="absolute inset-0 bg-transparent" 
+            onClick={() => setIsOpen(false)}
+          />
+          
+          {/* Sidebar Content */}
+          <div className="relative w-80 h-full bg-white shadow-2xl overflow-y-auto">
+            {/* Close button */}
+            <div className="flex items-center justify-between p-4 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <span className="text-lg font-bold">{memberName.charAt(0)}</span>
+                <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
+                  <Home className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-semibold">{memberName}</h3>
-                  <p className="text-white/80 text-sm capitalize">{userType}</p>
+                  <h2 className="font-bold text-lg">Society Manager</h2>
+                  <p className="text-xs text-muted-foreground">{userType === 'admin' ? 'Admin Panel' : 'Member Portal'}</p>
                 </div>
               </div>
-            </Card>
-
-            {/* Menu Items */}
-            <div className="space-y-2 mb-6">
-              {menuItems.map((item) => (
-                <MenuItem key={item.id} item={item} isMobile />
-              ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsOpen(false)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="w-4 h-4" />
+              </Button>
             </div>
 
-            <Button variant="ghost" className="w-full justify-start gap-3 h-12 text-danger hover:bg-danger/10">
-              <LogOut className="w-5 h-5" />
-              Logout
-            </Button>
+            <div className="p-6">
+              {/* User Info */}
+              <Card className="p-4 mb-6 bg-gradient-hero text-white border-0 shadow-primary">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <span className="text-lg font-bold">{memberName.charAt(0)}</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{memberName}</h3>
+                    <p className="text-white/80 text-sm capitalize">{userType}</p>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Menu Items */}
+              <div className="space-y-2 mb-8">
+                {menuItems.map((item) => (
+                  <MenuItem key={item.id} item={item} isMobile />
+                ))}
+              </div>
+
+              {/* Logout */}
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start gap-3 h-12 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/20"
+                onClick={() => {
+                  setIsOpen(false);
+                  // Add logout logic here
+                }}
+              >
+                <LogOut className="w-5 h-5" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:w-80 lg:flex-col lg:fixed lg:inset-y-0">
-        <div className="flex flex-col flex-1 bg-white border-r border-border">
+      <div className="hidden lg:flex lg:w-80 lg:flex-col lg:fixed lg:inset-y-0 lg:z-30">
+        <div className="flex flex-col flex-1 bg-white border-r border-border shadow-lg">
           {/* Logo */}
-          <div className="p-6 border-b border-border">
+          <div className="p-6 border-b border-border bg-white">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
                 <Home className="w-6 h-6 text-white" />
@@ -149,7 +177,7 @@ export const Navigation = ({ currentView, onViewChange, userType, memberName }: 
           </div>
 
           {/* User Info */}
-          <div className="p-6">
+          <div className="p-6 bg-white">
             <Card className="p-4 bg-gradient-hero text-white border-0 shadow-primary">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -164,8 +192,8 @@ export const Navigation = ({ currentView, onViewChange, userType, memberName }: 
           </div>
 
           {/* Navigation */}
-          <div className="flex-1 px-6">
-            <div className="space-y-2">
+          <div className="flex-1 px-6 bg-white overflow-y-auto">
+            <div className="space-y-2 pb-4">
               {menuItems.map((item) => (
                 <MenuItem key={item.id} item={item} />
               ))}
@@ -173,8 +201,15 @@ export const Navigation = ({ currentView, onViewChange, userType, memberName }: 
           </div>
 
           {/* Logout */}
-          <div className="p-6 border-t border-border">
-            <Button variant="ghost" className="w-full justify-start gap-3 h-12 text-danger hover:bg-danger/10">
+          <div className="p-6 border-t border-border bg-white">
+            <Button 
+              variant="ghost" 
+              className="w-full justify-start gap-3 h-12 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/20"
+              onClick={() => {
+                // Add logout logic here
+                window.location.reload();
+              }}
+            >
               <LogOut className="w-5 h-5" />
               Logout
             </Button>
