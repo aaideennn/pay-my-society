@@ -37,8 +37,8 @@ const Index = () => {
         default: return <AdminDashboard />;
       }
     } else {
-      // Member views (simplified for now)
-      return <MemberDashboard />;
+      // Member views with proper email context
+      return <MemberDashboard memberEmail={userEmail} />;
     }
   };
 
