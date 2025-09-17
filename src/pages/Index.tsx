@@ -7,6 +7,7 @@ import { MembersManagement } from '@/components/admin/MembersManagement';
 import { BillManagement } from '@/components/admin/BillManagement';
 import { ExpenseManagement } from '@/components/admin/ExpenseManagement';
 import { FinancialReports } from '@/components/admin/FinancialReports';
+import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 
 type UserType = 'member' | 'admin' | null;
 
@@ -47,20 +48,26 @@ const Index = () => {
   }
 
   return (
-    <div className="flex h-screen bg-muted/30">
-      <Navigation 
-        currentView={currentView} 
-        onViewChange={setCurrentView}
-        userType={currentUser}
-        memberName={getMemberName()}
-      />
-      
-      <div className="flex-1 lg:pl-80">
-        <main className="p-6 overflow-auto h-full">
-          {renderView()}
-        </main>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full">
+        <Navigation 
+          currentView={currentView} 
+          onViewChange={setCurrentView}
+          userType={currentUser}
+          memberName={getMemberName()}
+        />
+
+        <SidebarInset>
+          <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b bg-background px-4">
+            <SidebarTrigger />
+            <div className="font-semibold">Society Manager</div>
+          </header>
+          <main className="p-6">
+            {renderView()}
+          </main>
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 
