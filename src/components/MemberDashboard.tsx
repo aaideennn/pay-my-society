@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { 
   CreditCard, 
@@ -23,9 +24,14 @@ import {
   Settings,
   Eye,
   Receipt,
-  CreditCard as PaymentIcon
+  CreditCard as PaymentIcon,
+  Search,
+  Filter,
+  RefreshCcw,
+  FileText,
+  Home
 } from 'lucide-react';
-import { getMembers, getBills, getNotices, updateBill, updateMember, type Member, type Bill, type Notice } from '@/lib/mockData';
+import { getMembers, getBills, getNotices, updateBill, updateMember, initializeData, type Member, type Bill, type Notice } from '@/lib/mockData';
 
 interface MemberDashboardProps {
   memberEmail?: string;
@@ -40,29 +46,70 @@ export const MemberDashboard = ({ memberEmail = 'rajesh.kumar@email.com' }: Memb
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
   const [isNoticeDialogOpen, setIsNoticeDialogOpen] = useState(false);
+  const [billSearchTerm, setBillSearchTerm] = useState('');
+  const [billFilter, setBillFilter] = useState<'all' | 'pending' | 'paid' | 'overdue'>('all');
+  const [showAllBills, setShowAllBills] = useState(false);
+  const [showAllNotices, setShowAllNotices] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    loadMemberData();
+    initializeDataAndLoad();
   }, [memberEmail]);
 
-  const loadMemberData = () => {
+  const initializeDataAndLoad = async () => {
+    setIsLoading(true);
+    try {
+      // Initialize data first to ensure it exists
+      initializeData();
+      await loadMemberData();
+    } catch (error) {
+      toast({
+        title: "Error Loading Data",
+        description: "Failed to load member data. Please refresh the page.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadMemberData = async () => {
     const members = getMembers();
     const currentMember = members.find(m => m.email === memberEmail);
     if (currentMember) {
       setMember(currentMember);
       
       const allBills = getBills();
-      const memberBills = allBills.filter(b => b.memberId === currentMember.id);
+      const memberBills = allBills.filter(b => b.memberId === currentMember.id)
+        .sort((a, b) => new Date(b.year + '-' + (new Date(Date.parse(a.month + ' 1, 2000')).getMonth() + 1) + '-01').getTime() - 
+                       new Date(a.year + '-' + (new Date(Date.parse(b.month + ' 1, 2000')).getMonth() + 1) + '-01').getTime());
       setBills(memberBills);
       
       const allNotices = getNotices();
-      setNotices(allNotices.filter(n => n.status === 'active'));
+      setNotices(allNotices.filter(n => n.status === 'active')
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     }
   };
 
-  if (!member) {
-    return <div className="flex items-center justify-center h-64">Loading member data...</div>;
+  const refreshData = async () => {
+    setRefreshing(true);
+    await loadMemberData();
+    setRefreshing(false);
+    toast({
+      title: "Data Refreshed",
+      description: "Your dashboard has been updated with the latest information.",
+    });
+  };
+
+  if (isLoading || !member) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <RefreshCcw className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-lg">Loading your dashboard...</p>
+      </div>
+    );
   }
 
   const pendingBills = bills.filter(b => b.status === 'pending');
@@ -74,6 +121,18 @@ export const MemberDashboard = ({ memberEmail = 'rajesh.kumar@email.com' }: Memb
   
   const nextDueBill = [...pendingBills, ...overdueBills]
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
+
+  // Filter bills based on search and filter
+  const filteredBills = bills.filter(bill => {
+    const matchesSearch = bill.month.toLowerCase().includes(billSearchTerm.toLowerCase()) ||
+                         bill.year.toString().includes(billSearchTerm) ||
+                         bill.amount.toString().includes(billSearchTerm);
+    const matchesFilter = billFilter === 'all' || bill.status === billFilter;
+    return matchesSearch && matchesFilter;
+  });
+
+  const displayBills = showAllBills ? filteredBills : filteredBills.slice(0, 3);
+  const displayNotices = showAllNotices ? notices : notices.slice(0, 3);
 
   const handlePayment = (bill: Bill) => {
     setSelectedBill(bill);
@@ -169,15 +228,27 @@ export const MemberDashboard = ({ memberEmail = 'rajesh.kumar@email.com' }: Memb
                    overdueBills.reduce((sum, bill) => sum + bill.amount, 0)).toLocaleString()}
               </p>
             </div>
-            <Button 
-              variant="secondary" 
-              size="sm"
-              onClick={() => setIsProfileDialogOpen(true)}
-              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-            >
-              <Settings className="w-4 h-4 mr-1" />
-              Profile
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={refreshData}
+                disabled={refreshing}
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+              >
+                <RefreshCcw className={`w-4 h-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={() => setIsProfileDialogOpen(true)}
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+              >
+                <Settings className="w-4 h-4 mr-1" />
+                Profile
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -243,14 +314,40 @@ export const MemberDashboard = ({ memberEmail = 'rajesh.kumar@email.com' }: Memb
         <Card className="shadow-card-elegant">
           <div className="p-6 border-b border-border">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold">Current Bills</h2>
+              <h2 className="text-xl font-bold">Bills & Payments</h2>
               <Badge variant={pendingBills.length > 0 || overdueBills.length > 0 ? "destructive" : "secondary"}>
                 {pendingBills.length + overdueBills.length} Pending
               </Badge>
             </div>
+            {/* Search and Filter */}
+            <div className="mt-4 space-y-3">
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+                  <Input
+                    placeholder="Search bills by month, year, or amount..."
+                    value={billSearchTerm}
+                    onChange={(e) => setBillSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={billFilter} onValueChange={(value: any) => setBillFilter(value)}>
+                  <SelectTrigger className="w-32">
+                    <Filter className="w-4 h-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
           <div className="p-6 space-y-4">
-            {bills.slice(0, 3).map((bill) => (
+            {displayBills.map((bill) => (
               <div key={bill.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted transition-smooth">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${getStatusColor(bill.status)}`}>
@@ -286,8 +383,22 @@ export const MemberDashboard = ({ memberEmail = 'rajesh.kumar@email.com' }: Memb
                 </div>
               </div>
             ))}
-            {bills.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">No bills available</p>
+            {filteredBills.length === 0 && (
+              <p className="text-center text-muted-foreground py-8">
+                {billSearchTerm || billFilter !== 'all' ? 'No bills match your search criteria' : 'No bills available'}
+              </p>
+            )}
+            {filteredBills.length > 3 && (
+              <div className="pt-4 border-t">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowAllBills(!showAllBills)}
+                  className="w-full"
+                >
+                  {showAllBills ? 'Show Less' : `Show All ${filteredBills.length} Bills`}
+                  <ArrowRight className={`w-4 h-4 ml-2 transition-transform ${showAllBills ? 'rotate-90' : ''}`} />
+                </Button>
+              </div>
             )}
           </div>
         </Card>
@@ -301,7 +412,7 @@ export const MemberDashboard = ({ memberEmail = 'rajesh.kumar@email.com' }: Memb
             </div>
           </div>
           <div className="p-6 space-y-4">
-            {notices.slice(0, 3).map((notice) => (
+            {displayNotices.map((notice) => (
               <div 
                 key={notice.id} 
                 className={`flex items-start gap-3 p-3 rounded-xl border-l-4 cursor-pointer hover:shadow-sm transition-smooth ${getPriorityColor(notice.priority)}`}
@@ -323,6 +434,18 @@ export const MemberDashboard = ({ memberEmail = 'rajesh.kumar@email.com' }: Memb
             ))}
             {notices.length === 0 && (
               <p className="text-center text-muted-foreground py-8">No notices available</p>
+            )}
+            {notices.length > 3 && (
+              <div className="pt-4 border-t">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowAllNotices(!showAllNotices)}
+                  className="w-full"
+                >
+                  {showAllNotices ? 'Show Less' : `Show All ${notices.length} Notices`}
+                  <ArrowRight className={`w-4 h-4 ml-2 transition-transform ${showAllNotices ? 'rotate-90' : ''}`} />
+                </Button>
+              </div>
             )}
           </div>
         </Card>

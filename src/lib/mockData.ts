@@ -46,7 +46,7 @@ export interface Notice {
 }
 
 // Initialize default data
-const initializeData = () => {
+export const initializeData = () => {
   const members: Member[] = [
     {
       id: '1',
