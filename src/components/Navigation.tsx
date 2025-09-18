@@ -49,7 +49,7 @@ export const Navigation = ({ currentView, onViewChange, userType, memberName }: 
   const menuItems = userType === 'admin' ? adminMenuItems : memberMenuItems;
 
   return (
-    <Sidebar collapsible="offcanvas" className="border-r bg-background">
+    <Sidebar collapsible="offcanvas" className="border-r z-30">
       <SidebarHeader className="p-4 border-b">
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 place-items-center rounded-lg bg-gradient-primary text-white">
