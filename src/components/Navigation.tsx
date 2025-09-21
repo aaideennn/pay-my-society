@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/sidebar';
 import { CreditCard, FileText, Home, LogOut, Settings, TrendingUp, Users, Bell } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface NavigationProps {
   currentView: string;
@@ -29,6 +30,13 @@ type MenuItem = {
 };
 
 export const Navigation = ({ currentView, onViewChange, userType, memberName }: NavigationProps) => {
+  const { signOut, user } = useAuth();
+  
+  const handleSignOut = async () => {
+    await signOut();
+  };
+  
+  const displayName = user?.user_metadata?.name || memberName || user?.email || 'User';
   const memberMenuItems: MenuItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'bills', label: 'My Bills', icon: FileText },
@@ -63,10 +71,10 @@ export const Navigation = ({ currentView, onViewChange, userType, memberName }: 
         <div className="mt-4 rounded-lg bg-gradient-hero p-4 text-white shadow-primary">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-lg bg-white/20 text-lg font-bold">
-              {memberName.charAt(0)}
+              {displayName.charAt(0).toUpperCase()}
             </div>
             <div>
-              <p className="font-semibold leading-tight">{memberName}</p>
+              <p className="font-semibold leading-tight">{displayName}</p>
               <p className="text-xs text-white/80 capitalize">{userType}</p>
             </div>
           </div>
@@ -104,10 +112,10 @@ export const Navigation = ({ currentView, onViewChange, userType, memberName }: 
         <Button
           variant="ghost"
           className="h-12 justify-start gap-3 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/20"
-          onClick={() => window.location.reload()}
+          onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4" />
-          Logout
+          Sign Out
         </Button>
       </SidebarFooter>
     </Sidebar>

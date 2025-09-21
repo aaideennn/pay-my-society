@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { LoginForm } from '@/components/LoginForm';
 import { Navigation } from '@/components/Navigation';
 import { MemberDashboard } from '@/components/MemberDashboard';
 import { AdminDashboard } from '@/components/AdminDashboard';
@@ -8,24 +7,24 @@ import { BillManagement } from '@/components/admin/BillManagement';
 import { ExpenseManagement } from '@/components/admin/ExpenseManagement';
 import { FinancialReports } from '@/components/admin/FinancialReports';
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
-
-type UserType = 'member' | 'admin' | null;
+import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
-  const [currentUser, setCurrentUser] = useState<UserType>(null);
+  const { user } = useAuth();
   const [currentView, setCurrentView] = useState('dashboard');
-  const [userEmail, setUserEmail] = useState('');
 
-  const handleLogin = (userType: UserType, email: string) => {
-    setCurrentUser(userType);
-    setUserEmail(email);
-    setCurrentView('dashboard');
+  // For now, we'll determine user type from email or default to member
+  // In a real implementation, this would come from the profiles table
+  const getUserType = (): 'member' | 'admin' => {
+    // Default all users to member for now - this should be fetched from your profiles table
+    return 'member';
   };
 
   const getMemberName = () => {
-    if (currentUser === 'admin') return 'Admin User';
-    return userEmail.includes('rajesh') ? 'Rajesh Kumar' : 'Society Member';
+    return user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
   };
+
+  const currentUser = getUserType();
 
   const renderView = () => {
     if (currentUser === 'admin') {
@@ -39,13 +38,9 @@ const Index = () => {
       }
     } else {
       // Member views with proper email context
-      return <MemberDashboard memberEmail={userEmail} />;
+      return <MemberDashboard memberEmail={user?.email || ''} />;
     }
   };
-
-  if (!currentUser) {
-    return <LoginForm onLogin={handleLogin} />;
-  }
 
   return (
     <SidebarProvider>
