@@ -14,13 +14,313 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bills: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string
+          description: string
+          due_date: string
+          id: string
+          month: number
+          payment_date: string | null
+          society_id: string
+          status: string
+          updated_at: string | null
+          user_id: string
+          year: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by: string
+          description: string
+          due_date: string
+          id?: string
+          month: number
+          payment_date?: string | null
+          society_id: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string
+          description?: string
+          due_date?: string
+          id?: string
+          month?: number
+          payment_date?: string | null
+          society_id?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bills_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "bills_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bills_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string | null
+          created_by: string
+          date: string
+          description: string
+          id: string
+          receipt_url: string | null
+          society_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string | null
+          created_by: string
+          date: string
+          description: string
+          id?: string
+          receipt_url?: string | null
+          society_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string | null
+          created_by?: string
+          date?: string
+          description?: string
+          id?: string
+          receipt_url?: string | null
+          society_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "expenses_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notices: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string
+          id: string
+          priority: string
+          society_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by: string
+          id?: string
+          priority?: string
+          society_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          priority?: string
+          society_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notices_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          email: string
+          flat_number: string | null
+          id: string
+          name: string
+          phone: string | null
+          role: string
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          email: string
+          flat_number?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          role?: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          email?: string
+          flat_number?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          role?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      societies: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          created_by: string
+          id: string
+          name: string
+          registration_number: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          created_by: string
+          id?: string
+          name: string
+          registration_number?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          name?: string
+          registration_number?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "societies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      society_members: {
+        Row: {
+          id: string
+          joined_at: string | null
+          role: string
+          society_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string | null
+          role?: string
+          society_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string | null
+          role?: string
+          society_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "society_members_society_id_fkey"
+            columns: ["society_id"]
+            isOneToOne: false
+            referencedRelation: "societies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "society_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_society_role: {
+        Args: { society_id_param: string; user_id_param: string }
+        Returns: string
+      }
+      is_society_admin: {
+        Args: { society_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
