@@ -10,21 +10,47 @@ import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/s
 import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const [currentView, setCurrentView] = useState('dashboard');
 
-  // For now, we'll determine user type from email or default to member
-  // In a real implementation, this would come from the profiles table
+  // Determine user type based on role data from database
   const getUserType = (): 'member' | 'admin' => {
-    // Default all users to member for now - this should be fetched from your profiles table
+    // Check if user is global admin or society admin
+    if (userRole.isAdmin || userRole.isSocietyAdmin) {
+      return 'admin';
+    }
+    
     return 'member';
   };
 
   const getMemberName = () => {
-    return user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
+    return userRole.profile?.name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
   };
 
   const currentUser = getUserType();
+
+  // Show loading state while fetching role data
+  if (userRole.loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="space-y-4">
+          <div className="text-center">Loading user permissions...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if role data failed to load
+  if (userRole.error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="space-y-4 text-center">
+          <div className="text-destructive">Failed to load user permissions</div>
+          <div className="text-sm text-muted-foreground">{userRole.error}</div>
+        </div>
+      </div>
+    );
+  }
 
   const renderView = () => {
     if (currentUser === 'admin') {
@@ -50,6 +76,7 @@ const Index = () => {
           onViewChange={setCurrentView}
           userType={currentUser}
           memberName={getMemberName()}
+          userRole={userRole}
         />
 
         <SidebarInset>

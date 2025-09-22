@@ -14,12 +14,14 @@ import {
 import { CreditCard, FileText, Home, LogOut, Settings, TrendingUp, Users, Bell } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { UserRoleData } from '@/hooks/useUserRole';
 
 interface NavigationProps {
   currentView: string;
   onViewChange: (view: string) => void;
   userType: 'member' | 'admin';
   memberName: string;
+  userRole: UserRoleData;
 }
 
 type MenuItem = {
@@ -29,14 +31,25 @@ type MenuItem = {
   badge?: number;
 };
 
-export const Navigation = ({ currentView, onViewChange, userType, memberName }: NavigationProps) => {
+export const Navigation = ({ currentView, onViewChange, userType, memberName, userRole }: NavigationProps) => {
   const { signOut, user } = useAuth();
   
   const handleSignOut = async () => {
     await signOut();
   };
   
-  const displayName = user?.user_metadata?.name || memberName || user?.email || 'User';
+  const displayName = userRole.profile?.name || user?.user_metadata?.name || memberName || user?.email || 'User';
+  
+  // Get role display text
+  const getRoleDisplay = () => {
+    if (userRole.isAdmin) return 'Global Admin';
+    if (userRole.isSocietyAdmin) {
+      const societyName = userRole.societyMemberships[0]?.society_name;
+      const role = userRole.currentSocietyRole;
+      return `${role} ${societyName ? `- ${societyName}` : ''}`;
+    }
+    return userType;
+  };
   const memberMenuItems: MenuItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'bills', label: 'My Bills', icon: FileText },
@@ -75,7 +88,7 @@ export const Navigation = ({ currentView, onViewChange, userType, memberName }: 
             </div>
             <div>
               <p className="font-semibold leading-tight">{displayName}</p>
-              <p className="text-xs text-white/80 capitalize">{userType}</p>
+              <p className="text-xs text-white/80 capitalize">{getRoleDisplay()}</p>
             </div>
           </div>
         </div>

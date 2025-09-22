@@ -2,11 +2,13 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useUserRole, UserRoleData } from '@/hooks/useUserRole';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  userRole: UserRoleData;
   signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -19,6 +21,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const userRole = useUserRole(user);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -125,7 +128,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const value = {
     user,
     session,
-    loading,
+    loading: loading || userRole.loading,
+    userRole,
     signUp,
     signIn,
     signOut,
