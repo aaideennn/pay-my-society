@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const redirectUrl = `${window.location.origin}/`;
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -70,9 +70,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           variant: "destructive",
         });
       } else {
+        // Ensure user is NOT auto-logged-in after signup
+        if (data?.session) {
+          await supabase.auth.signOut();
+        }
         toast({
-          title: "Check your email",
-          description: "We've sent you a confirmation link to complete your registration.",
+          title: "Account created",
+          description: "Please sign in to continue.",
         });
       }
 

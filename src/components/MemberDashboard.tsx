@@ -103,11 +103,24 @@ export const MemberDashboard = ({ memberEmail = 'rajesh.kumar@email.com' }: Memb
     });
   };
 
-  if (isLoading || !member) {
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 space-y-4">
         <RefreshCcw className="w-8 h-8 animate-spin text-primary" />
         <p className="text-lg">Loading your dashboard...</p>
+      </div>
+    );
+  }
+
+  if (!member) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-3 text-center">
+        <Home className="w-8 h-8 text-muted-foreground" />
+        <p className="text-lg font-medium">We couldn't find your member profile.</p>
+        <p className="text-sm text-muted-foreground">Please contact your society admin to link your account.</p>
+        <Button className="mt-2" variant="outline" onClick={refreshData} disabled={refreshing}>
+          <RefreshCcw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} /> Try again
+        </Button>
       </div>
     );
   }

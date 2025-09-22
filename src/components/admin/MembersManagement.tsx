@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { getMembers, addMember, updateMember, deleteMember, type Member } from '@/lib/mockData';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export const MembersManagement = () => {
   const [members, setMembers] = useState<Member[]>([]);
@@ -44,8 +45,36 @@ export const MembersManagement = () => {
     loadMembers();
   }, []);
 
-  const loadMembers = () => {
-    setMembers(getMembers());
+  const loadMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const mapped: Member[] = data.map((p: any) => ({
+          id: p.user_id || p.id,
+          name: p.name || p.email,
+          email: p.email,
+          flatNumber: p.flat_number || '—',
+          phone: p.phone || '—',
+          monthlyAmount: 2500,
+          status: (p.status as 'active' | 'inactive' | 'pending') || 'active',
+          joinDate: p.created_at || new Date().toISOString(),
+        }));
+        setMembers(mapped);
+        return;
+      }
+
+      // Fallback to mock data if no profiles yet
+      setMembers(getMembers());
+    } catch (e) {
+      // Fallback on error
+      setMembers(getMembers());
+    }
   };
 
   const filteredMembers = members.filter(member => {

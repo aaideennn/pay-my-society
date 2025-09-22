@@ -56,9 +56,14 @@ export default function Auth() {
     
     setIsSubmitting(true);
     
-    await signUp(signUpForm.email, signUpForm.password, signUpForm.name, signUpForm.role);
-    
+    const { error } = await signUp(signUpForm.email, signUpForm.password, signUpForm.name, signUpForm.role);
+
     setIsSubmitting(false);
+
+    if (!error) {
+      // Always route to Sign In after successful signup
+      window.location.href = '/auth';
+    }
   };
 
   return (
