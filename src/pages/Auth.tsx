@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building, Mail, Lock, User } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Building, Mail, Lock, User, Shield } from 'lucide-react';
 
 export default function Auth() {
   const { user, signIn, signUp, loading } = useAuth();
@@ -23,6 +24,7 @@ export default function Auth() {
     email: '',
     password: '',
     confirmPassword: '',
+    role: 'member' as 'member' | 'admin',
   });
 
   // Redirect if already authenticated
@@ -54,7 +56,7 @@ export default function Auth() {
     
     setIsSubmitting(true);
     
-    await signUp(signUpForm.email, signUpForm.password, signUpForm.name);
+    await signUp(signUpForm.email, signUpForm.password, signUpForm.name, signUpForm.role);
     
     setIsSubmitting(false);
   };
@@ -170,6 +172,43 @@ export default function Auth() {
                         onChange={(e) => setSignUpForm({ ...signUpForm, email: e.target.value })}
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-role">Role</Label>
+                    <Select 
+                      value={signUpForm.role} 
+                      onValueChange={(value: 'member' | 'admin') => 
+                        setSignUpForm({ ...signUpForm, role: value })
+                      }
+                    >
+                      <SelectTrigger className="w-full">
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-muted-foreground" />
+                          <SelectValue placeholder="Select your role" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border shadow-lg z-50">
+                        <SelectItem value="member">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            <div>
+                              <div className="font-medium">Member</div>
+                              <div className="text-xs text-muted-foreground">Regular society member</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="admin">
+                          <div className="flex items-center gap-2">
+                            <Shield className="h-4 w-4" />
+                            <div>
+                              <div className="font-medium">Admin</div>
+                              <div className="text-xs text-muted-foreground">Society administrator</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   
                   <div className="space-y-2">
