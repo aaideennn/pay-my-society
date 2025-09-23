@@ -15,46 +15,155 @@ import {
   Wallet
 } from 'lucide-react';
 import { FinanceChart } from './FinanceChart';
+import { PendingApprovals } from './admin/PendingApprovals';
 import { useEffect, useState } from 'react';
 import { getSocietyStats, getMembers, getBills, getExpenses, type Member, type Bill, type Expense } from '@/lib/mockData';
+import { supabase } from '@/integrations/supabase/client';
 
 export const AdminDashboard = () => {
-  const [stats, setStats] = useState(getSocietyStats());
-  const [recentPayments, setRecentPayments] = useState<Bill[]>([]);
+  const [stats, setStats] = useState({
+    totalMembers: 0,
+    activeMembers: 0,
+    pendingMembers: 0,
+    totalCollection: 0,
+    totalExpenses: 0,
+    netBalance: 0,
+    collectionRate: 0,
+    overdueCount: 0,
+    monthlyTarget: 0
+  });
+  const [recentPayments, setRecentPayments] = useState<any[]>([]);
   const [overdueMembers, setOverdueMembers] = useState<{member: Member, bills: Bill[]}[]>([]);
-  const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
+  const [recentExpenses, setRecentExpenses] = useState<any[]>([]);
+  const [members, setMembers] = useState<any[]>([]);
+
+  const loadDashboardData = async () => {
+    try {
+      // Load members from Supabase
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Load expenses from Supabase
+      const { data: expenses } = await supabase
+        .from('expenses')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      // Load bills from Supabase
+      const { data: bills } = await supabase
+        .from('bills')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      const profilesData = profiles || [];
+      const expensesData = expenses || [];
+      const billsData = bills || [];
+
+      setMembers(profilesData);
+      setRecentExpenses(expensesData);
+
+      // Set recent payments (recent paid bills)
+      const recentPaidBills = billsData
+        .filter(b => b.status === 'paid' && b.payment_date)
+        .sort((a: any, b: any) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())
+        .slice(0, 4);
+      setRecentPayments(recentPaidBills);
+
+      // Calculate stats
+      const totalMembers = profilesData.length;
+      const activeMembers = profilesData.filter(p => p.status === 'active').length;
+      const pendingMembers = profilesData.filter(p => p.status === 'pending').length;
+      
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      
+      const currentMonthBills = billsData.filter(b => 
+        b.year === currentYear && b.month === currentMonth
+      );
+      
+      const paidBills = currentMonthBills.filter(b => b.status === 'paid');
+      const totalCollection = paidBills.reduce((sum, bill) => sum + (bill.amount || 0), 0);
+      
+      const currentMonthExpenses = expensesData.filter(e => {
+        const expenseDate = new Date(e.date);
+        return expenseDate.getFullYear() === currentYear && 
+               expenseDate.getMonth() + 1 === currentMonth;
+      });
+      const totalExpenses = currentMonthExpenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+
+      const collectionRate = currentMonthBills.length > 0 
+        ? Math.round((paidBills.length / currentMonthBills.length) * 100) 
+        : 0;
+
+      setStats({
+        totalMembers,
+        activeMembers,
+        pendingMembers,
+        totalCollection,
+        totalExpenses,
+        netBalance: totalCollection - totalExpenses,
+        collectionRate,
+        overdueCount: billsData.filter(b => b.status === 'overdue').length,
+        monthlyTarget: activeMembers * 2500
+      });
+
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      // Fallback to mock data
+      const members = getMembers();
+      const bills = getBills();
+      const expenses = getExpenses();
+
+      setStats(getSocietyStats());
+      setRecentExpenses(expenses.slice(0, 3));
+    }
+  };
 
   useEffect(() => {
-    // Load real data
-    const members = getMembers();
-    const bills = getBills();
-    const expenses = getExpenses();
+    loadDashboardData();
 
-    // Get recent payments (last 10 paid bills)
-    const recentPaidBills = bills
-      .filter(b => b.status === 'paid' && b.paidDate)
-      .sort((a, b) => new Date(b.paidDate!).getTime() - new Date(a.paidDate!).getTime())
-      .slice(0, 4);
-    setRecentPayments(recentPaidBills);
+    // Set up real-time subscriptions
+    const profilesChannel = supabase
+      .channel('profiles-dashboard')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'profiles'
+      }, () => {
+        loadDashboardData();
+      })
+      .subscribe();
 
-    // Get overdue members
-    const overdue = members
-      .map(member => ({
-        member,
-        bills: bills.filter(b => b.memberId === member.id && b.status === 'overdue')
-      }))
-      .filter(item => item.bills.length > 0)
-      .slice(0, 2);
-    setOverdueMembers(overdue);
+    const expensesChannel = supabase
+      .channel('expenses-dashboard')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'expenses'
+      }, () => {
+        loadDashboardData();
+      })
+      .subscribe();
 
-    // Get recent expenses (last 3)
-    const recent = expenses
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 3);
-    setRecentExpenses(recent);
+    const billsChannel = supabase
+      .channel('bills-dashboard')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'bills'
+      }, () => {
+        loadDashboardData();
+      })
+      .subscribe();
 
-    // Update stats
-    setStats(getSocietyStats());
+    return () => {
+      supabase.removeChannel(profilesChannel);
+      supabase.removeChannel(expensesChannel);
+      supabase.removeChannel(billsChannel);
+    };
   }, []);
 
   return (
@@ -176,6 +285,11 @@ export const AdminDashboard = () => {
         </Card>
       </div>
 
+      {/* Pending Approvals - Show if there are pending members */}
+      {stats.pendingMembers > 0 && (
+        <PendingApprovals />
+      )}
+
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="shadow-card-elegant">
@@ -188,8 +302,8 @@ export const AdminDashboard = () => {
             </div>
           </div>
           <div className="p-6 space-y-4">
-            {recentPayments.map((payment) => {
-              const member = getMembers().find(m => m.id === payment.memberId);
+            {recentPayments.length > 0 ? recentPayments.map((payment) => {
+              const member = members.find(m => m.user_id === payment.user_id);
               return (
                 <div key={payment.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-smooth">
                   <div className="flex items-center gap-3">
@@ -197,16 +311,21 @@ export const AdminDashboard = () => {
                       <CheckCircle className="w-4 h-4 text-white" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-sm">{member?.name}</h3>
-                      <p className="text-xs text-muted-foreground">Flat {member?.flatNumber} • {payment.paidDate}</p>
+                      <h3 className="font-semibold text-sm">{member?.name || 'Unknown Member'}</h3>
+                      <p className="text-xs text-muted-foreground">Flat {member?.flat_number || '—'} • {new Date(payment.payment_date || payment.created_at || '').toLocaleDateString()}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-success">₹{payment.amount.toLocaleString()}</p>
+                    <p className="font-bold text-success">₹{payment.amount?.toLocaleString()}</p>
                   </div>
                 </div>
               );
-            })}
+            }) : (
+              <div className="p-6 text-center text-muted-foreground">
+                <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No recent payments</p>
+              </div>
+            )}
           </div>
         </Card>
 
@@ -220,7 +339,7 @@ export const AdminDashboard = () => {
             </div>
           </div>
           <div className="p-6 space-y-4">
-            {recentExpenses.map((expense) => (
+            {recentExpenses.length > 0 ? recentExpenses.map((expense) => (
               <div key={expense.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-muted/50 transition-smooth">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-gradient-warning rounded-lg flex items-center justify-center">
@@ -228,14 +347,19 @@ export const AdminDashboard = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-sm">{expense.category}</h3>
-                    <p className="text-xs text-muted-foreground">{expense.vendor} • {expense.date}</p>
+                    <p className="text-xs text-muted-foreground">{expense.description} • {new Date(expense.date).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-warning">-₹{expense.amount.toLocaleString()}</p>
+                  <p className="font-bold text-warning">-₹{expense.amount?.toLocaleString()}</p>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="p-6 text-center text-muted-foreground">
+                <DollarSign className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No recent expenses</p>
+              </div>
+            )}
           </div>
         </Card>
       </div>

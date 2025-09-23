@@ -43,6 +43,22 @@ export const MembersManagement = () => {
 
   useEffect(() => {
     loadMembers();
+
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('profiles-changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'profiles'
+      }, () => {
+        loadMembers(); // Reload when profiles change
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadMembers = async () => {
@@ -97,21 +113,45 @@ export const MembersManagement = () => {
     setEditingMember(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
       if (editingMember) {
-        updateMember(editingMember.id, formData);
+        // Update existing member
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            name: formData.name,
+            email: formData.email,
+            flat_number: formData.flatNumber,
+            phone: formData.phone,
+            status: formData.status,
+          })
+          .eq('user_id', editingMember.id);
+
+        if (error) throw error;
+
         toast({
           title: "Member Updated",
           description: "Member information has been updated successfully.",
         });
       } else {
-        addMember({
-          ...formData,
-          joinDate: new Date().toISOString().split('T')[0]
-        });
+        // Add new member (admin creating profile manually)
+        const { error } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: crypto.randomUUID(), // Generate temp ID for manual entries
+            name: formData.name,
+            email: formData.email,
+            flat_number: formData.flatNumber,
+            phone: formData.phone,
+            status: formData.status,
+            role: 'member'
+          });
+
+        if (error) throw error;
+
         toast({
           title: "Member Added",
           description: "New member has been added successfully.",
@@ -121,10 +161,10 @@ export const MembersManagement = () => {
       loadMembers();
       setIsAddDialogOpen(false);
       resetForm();
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "An error occurred while saving member information.",
+        description: error.message || "An error occurred while saving member information.",
         variant: "destructive",
       });
     }
@@ -143,13 +183,50 @@ export const MembersManagement = () => {
     setIsAddDialogOpen(true);
   };
 
-  const handleDelete = (member: Member) => {
+  const handleDelete = async (member: Member) => {
     if (window.confirm(`Are you sure you want to delete member ${member.name}?`)) {
-      deleteMember(member.id);
-      loadMembers();
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('user_id', member.id);
+
+        if (error) throw error;
+
+        loadMembers();
+        toast({
+          title: "Member Deleted",
+          description: "Member has been removed successfully.",
+        });
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to delete member.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleApprove = async (member: Member) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status: 'active' })
+        .eq('user_id', member.id);
+
+      if (error) throw error;
+
       toast({
-        title: "Member Deleted",
-        description: "Member has been removed successfully.",
+        title: "Member Approved",
+        description: `${member.name} has been approved and is now an active member.`,
+      });
+      loadMembers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to approve member.",
+        variant: "destructive",
       });
     }
   };
@@ -390,6 +467,11 @@ export const MembersManagement = () => {
                     <p className="text-sm text-muted-foreground">Monthly Amount</p>
                     <p className="font-bold text-lg">₹{member.monthlyAmount.toLocaleString()}</p>
                   </div>
+                  {member.status === 'pending' && (
+                    <Button variant="default" size="sm" onClick={() => handleApprove(member)} className="bg-gradient-success">
+                      <CheckCircle className="w-4 h-4" />
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={() => handleEdit(member)}>
                     <Edit className="w-4 h-4" />
                   </Button>
